@@ -17,13 +17,3 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew test
-      - name: Code coverage check
-        run: |
-          ./gradlew jacocoTestCoverageVerification
-      - name: Send code coverage
-        uses: codecov/codecov-action@v2
-        with:
-          files: build/reports/jacoco/test/jacocoTestReport.xml
-          fail_ci_if_error: true
-          verbose: true
-          version: v0.1.3
