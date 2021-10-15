@@ -12,6 +12,7 @@ class JiraTarget(
     private val project: String,
     private val testIssueType: String,
     private val jqlForTests: String = "project = $project and type = \"$testIssueType\"",
+    // if true email notification to watchers will be sent
     private val notifyOnUpdates: Boolean = false,
 ) : TestsTarget {
     var jiraClient: Client = JiraClient(baseUrl, userName)
