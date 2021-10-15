@@ -1,5 +1,6 @@
 package io.github.coteji.targets
 
+import io.github.coteji.clients.Client
 import io.github.coteji.clients.JiraClient
 import io.github.coteji.core.TestsTarget
 import io.github.coteji.model.CotejiTest
@@ -13,7 +14,7 @@ class JiraTarget(
     private val jqlForTests: String = "project = $project and type = \"$testIssueType\"",
     private val notifyOnUpdates: Boolean = false,
 ) : TestsTarget {
-    private val jiraClient = JiraClient(baseUrl, userName)
+    var jiraClient: Client = JiraClient(baseUrl, userName)
     private val projectId: String by lazy { jiraClient.getProjectId(project) }
     private val issueTypeId: String by lazy { jiraClient.getIssueTypeId(testIssueType, projectId) }
 
@@ -83,11 +84,38 @@ class JiraTarget(
     }
 
     override fun pushOnly(tests: List<CotejiTest>, force: Boolean): Result {
-        TODO("Not yet implemented")
+        val remoteTestIds = jiraClient.searchIssues(jqlForTests).map { it["key"] as String }
+        val result = Result()
+
+        // add new
+        val testsToAdd = tests.filter { it.id == null || it.id !in remoteTestIds }
+        if (testsToAdd.isNotEmpty()) {
+            val addedIds = jiraClient.createIssues(testsToAdd.map { it.toCreatePayload(projectId, issueTypeId) })
+            if (testsToAdd.size != addedIds.size) {
+                throw RuntimeException(
+                    "Error occurred while adding tests to Jira. " +
+                            "Tests to add: ${testsToAdd.size}, added IDs: ${addedIds.size}"
+                )
+            }
+            result.testsAdded.addAll((testsToAdd.indices).map { i -> testsToAdd[i].copy(id = addedIds[i]) })
+        }
+
+        // update existing
+        if (force) {
+            tests.filter { it.id in remoteTestIds }.forEach {
+                jiraClient.editIssue(it.id!!, it.toEditPayload(), notifyOnUpdates)
+                result.testsUpdated.add(it)
+            }
+        } else {
+            tests.filter { it.id in remoteTestIds }.forEach {
+                result.testsAlreadyUpToDate.add(it)
+            }
+        }
+        return result
     }
 }
 
-private fun CotejiTest.toCreatePayload(projectId: String, issueTypeId: String): Map<String, Any> =
+fun CotejiTest.toCreatePayload(projectId: String, issueTypeId: String): Map<String, Any> =
     mapOf(
         Pair(
             "fields", mapOf(
@@ -100,7 +128,7 @@ private fun CotejiTest.toCreatePayload(projectId: String, issueTypeId: String): 
         )
     )
 
-private fun CotejiTest.toEditPayload(): Map<String, Any> {
+fun CotejiTest.toEditPayload(): Map<String, Any> {
     val result = mutableMapOf<String, Any>(
         Pair(
             "fields", mapOf(
@@ -110,7 +138,7 @@ private fun CotejiTest.toEditPayload(): Map<String, Any> {
         ),
     )
     if (this.attributes.containsKey("labels")) {
-        result["updates"] = mapOf(Pair("labels", listOf(mapOf(Pair("set", this.attributes["labels"])))))
+        result["update"] = mapOf(Pair("labels", listOf(mapOf(Pair("set", this.attributes["labels"])))))
     }
     return result
 }

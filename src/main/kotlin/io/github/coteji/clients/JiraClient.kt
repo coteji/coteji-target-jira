@@ -14,9 +14,9 @@ import com.google.gson.Gson
 import mu.KotlinLogging
 import java.util.*
 
-class JiraClient(hostUrl: String, userName: String) {
+class JiraClient(hostUrl: String, userName: String) : Client {
+    var issuesChunkSize = 100
     private val logger = KotlinLogging.logger {}
-    private val issuesChunkSize = 100
     private val defaultFieldsList = listOf("summary", "description", "labels", "status", "assignee")
 
     init {
@@ -30,7 +30,7 @@ class JiraClient(hostUrl: String, userName: String) {
         FuelManager.instance.basePath = hostUrl
     }
 
-    fun getIssue(key: String): Map<String, Any> {
+    override fun getIssue(key: String): Map<String, Any> {
         val (_, _, result) = "/rest/api/latest/issue/$key"
             .httpGet()
             .responseObject<HashMap<String, Any>>()
@@ -47,7 +47,7 @@ class JiraClient(hostUrl: String, userName: String) {
         }
     }
 
-    fun searchIssues(jql: String): List<Map<String, Any>> {
+    override fun searchIssues(jql: String): List<Map<String, Any>> {
         val result: MutableList<Map<String, Any>> = mutableListOf()
         val total: Int
         var startAt = 0
@@ -59,6 +59,7 @@ class JiraClient(hostUrl: String, userName: String) {
 
         when (reqResult) {
             is Failure -> {
+                logger.error { String(reqResult.error.errorData) }
                 throw JiraClientException(reqResult.getException().message, reqResult.getException())
             }
             is Success -> {
@@ -75,6 +76,7 @@ class JiraClient(hostUrl: String, userName: String) {
 
             when (nextReqResult) {
                 is Failure -> {
+                    logger.error { String(nextReqResult.error.errorData) }
                     throw JiraClientException(nextReqResult.getException().message, nextReqResult.getException())
                 }
                 is Success -> {
@@ -85,7 +87,7 @@ class JiraClient(hostUrl: String, userName: String) {
         return result
     }
 
-    fun deleteIssues(keys: List<String>) {
+    override fun deleteIssues(keys: List<String>) {
         for (key in keys) {
             val (_, _, result) = "/rest/api/latest/issue/$key"
                 .httpDelete(listOf(Pair("deleteSubtasks", "true")))
@@ -102,7 +104,7 @@ class JiraClient(hostUrl: String, userName: String) {
         }
     }
 
-    fun createIssues(payload: List<Map<String, Any>>): List<String> {
+    override fun createIssues(payload: List<Map<String, Any>>): List<String> {
         val body = mapOf(Pair("issueUpdates", payload))
         val (_, _, result) = "/rest/api/latest/issue/bulk"
             .httpPost()
@@ -125,7 +127,7 @@ class JiraClient(hostUrl: String, userName: String) {
         }
     }
 
-    fun editIssue(key: String, payload: Map<String, Any>, notifyOnUpdates: Boolean) {
+    override fun editIssue(key: String, payload: Map<String, Any>, notifyOnUpdates: Boolean) {
         val (_, _, result) = "/rest/api/latest/issue/$key"
             .httpPut(listOf(Pair("notifyUsers", notifyOnUpdates)))
             .body(Gson().toJson(payload))
@@ -141,7 +143,7 @@ class JiraClient(hostUrl: String, userName: String) {
         }
     }
 
-    fun getProjectId(project: String): String {
+    override fun getProjectId(project: String): String {
         val (_, _, result) = "/rest/api/latest/project/$project"
             .httpGet()
             .responseObject<HashMap<String, Any>>()
@@ -158,7 +160,7 @@ class JiraClient(hostUrl: String, userName: String) {
         }
     }
 
-    fun getIssueTypeId(issueType: String, projectId: String): String {
+    override fun getIssueTypeId(issueType: String, projectId: String): String {
         val (_, _, result) = "/rest/api/latest/issuetype/project"
             .httpGet(listOf(Pair("projectId", projectId)))
             .responseObject<List<HashMap<String, Any>>>()

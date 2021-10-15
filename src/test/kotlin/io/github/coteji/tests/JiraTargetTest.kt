@@ -1,5 +1,6 @@
 package io.github.coteji.tests
 
+import io.github.coteji.clients.JiraClient
 import io.github.coteji.model.CotejiTest
 import io.github.coteji.targets.JiraTarget
 import org.assertj.core.api.Assertions.assertThat
@@ -32,8 +33,12 @@ class JiraTargetTest {
         testIssueType = "Test Case"
     )
 
+    init {
+        (jira.jiraClient as JiraClient).issuesChunkSize = 1
+    }
+
     @Test
-    fun dryRunNoForce() {
+    fun `dry run no-force`() {
         val result = jira.dryRun(tests, false)
         assertThat(result.testsAdded).isEmpty()
         assertThat(result.testsUpdated).isEmpty()
@@ -43,7 +48,7 @@ class JiraTargetTest {
     }
 
     @Test
-    fun dryRunForce() {
+    fun `dry run force`() {
         val result = jira.dryRun(tests, true)
         assertThat(result.testsAdded).isEmpty()
         assertThat(result.testsUpdated).hasSize(2)

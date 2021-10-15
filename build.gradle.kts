@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm") version "1.5.31"
     id("com.vanniktech.maven.publish") version "0.13.0"
     id("org.jetbrains.dokka") version "1.4.32"
+    jacoco
 }
 
 version = "0.1.0"
@@ -23,9 +24,31 @@ dependencies {
     api("com.google.code.gson:gson:2.8.8")
 }
 
+jacoco {
+    toolVersion = "0.8.7"
+}
+
+tasks.jacocoTestReport {
+    reports {
+        xml.required.set(true)
+        csv.required.set(false)
+    }
+}
+
+tasks.jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = "0.88".toBigDecimal()
+            }
+        }
+    }
+}
+
 tasks.test {
     useJUnitPlatform()
     testLogging {
         events("passed", "skipped", "failed")
     }
+    finalizedBy(tasks.jacocoTestReport)
 }
