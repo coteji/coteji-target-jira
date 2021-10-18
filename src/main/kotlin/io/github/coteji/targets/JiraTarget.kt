@@ -4,7 +4,7 @@ import io.github.coteji.clients.Client
 import io.github.coteji.clients.JiraClient
 import io.github.coteji.core.TestsTarget
 import io.github.coteji.model.CotejiTest
-import io.github.coteji.model.Result
+import io.github.coteji.model.PushResult
 
 class JiraTarget(
     private val baseUrl: String,
@@ -19,9 +19,9 @@ class JiraTarget(
     private val projectId: String by lazy { jiraClient.getProjectId(project) }
     private val issueTypeId: String by lazy { jiraClient.getIssueTypeId(testIssueType, projectId) }
 
-    override fun dryRun(tests: List<CotejiTest>, force: Boolean): Result {
+    override fun dryRun(tests: List<CotejiTest>, force: Boolean): PushResult {
         val remoteTestIds = jiraClient.searchIssues(jqlForTests).map { it["key"] as String }
-        val result = Result()
+        val result = PushResult()
 
         // delete redundant
         val idsInSource = tests.filter { it.id != null }.map { it.id }
@@ -31,6 +31,7 @@ class JiraTarget(
         // add new
         val testsToAdd = tests.filter { it.id == null || it.id !in remoteTestIds }
         result.testsAdded.addAll(testsToAdd)
+        result.testsWithNonExistingId.addAll(tests.filter { it.id != null && it.id !in remoteTestIds })
 
         // update existing
         if (force) {
@@ -45,9 +46,9 @@ class JiraTarget(
         return result
     }
 
-    override fun pushAll(tests: List<CotejiTest>, force: Boolean): Result {
+    override fun pushAll(tests: List<CotejiTest>, force: Boolean): PushResult {
         val remoteTestIds = jiraClient.searchIssues(jqlForTests).map { it["key"] as String }
-        val result = Result()
+        val result = PushResult()
 
         // delete redundant
         val idsInSource = tests.filter { it.id != null }.map { it.id }
@@ -69,6 +70,7 @@ class JiraTarget(
             }
             result.testsAdded.addAll((testsToAdd.indices).map { i -> testsToAdd[i].copy(id = addedIds[i]) })
         }
+        result.testsWithNonExistingId.addAll(tests.filter { it.id != null && it.id !in remoteTestIds })
 
         // update existing
         if (force) {
@@ -84,9 +86,9 @@ class JiraTarget(
         return result
     }
 
-    override fun pushOnly(tests: List<CotejiTest>, force: Boolean): Result {
+    override fun pushOnly(tests: List<CotejiTest>, force: Boolean): PushResult {
         val remoteTestIds = jiraClient.searchIssues(jqlForTests).map { it["key"] as String }
-        val result = Result()
+        val result = PushResult()
 
         // add new
         val testsToAdd = tests.filter { it.id == null || it.id !in remoteTestIds }
@@ -100,6 +102,7 @@ class JiraTarget(
             }
             result.testsAdded.addAll((testsToAdd.indices).map { i -> testsToAdd[i].copy(id = addedIds[i]) })
         }
+        result.testsWithNonExistingId.addAll(tests.filter { it.id != null && it.id !in remoteTestIds })
 
         // update existing
         if (force) {

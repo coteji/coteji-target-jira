@@ -9,6 +9,12 @@ import org.junit.jupiter.api.Test
 class JiraTargetTest {
     private val tests = listOf(
         CotejiTest(
+            id = "COT-7",
+            name = "[TEST] Non-Existing Test",
+            content = "Some content here",
+            attributes = mapOf()
+        ),
+        CotejiTest(
             id = "COT-8",
             name = "[TEST] Create Reminder",
             content = "Open Reminders App\nAdd Reminder [ reminder ]\nCheck Last Reminder [ reminder ]",
@@ -40,21 +46,23 @@ class JiraTargetTest {
     @Test
     fun `dry run no-force`() {
         val result = jira.dryRun(tests, false)
-        assertThat(result.testsAdded).isEmpty()
+        assertThat(result.testsAdded).hasSize(1)
         assertThat(result.testsUpdated).isEmpty()
         assertThat(result.testsAlreadyUpToDate).hasSize(2)
         assertThat(result.testsDeleted).isEmpty()
         assertThat(result.testsSyncFailed).isEmpty()
+        assertThat(result.testsWithNonExistingId).hasSize(1)
     }
 
     @Test
     fun `dry run force`() {
         val result = jira.dryRun(tests, true)
-        assertThat(result.testsAdded).isEmpty()
+        assertThat(result.testsAdded).hasSize(1)
         assertThat(result.testsUpdated).hasSize(2)
         assertThat(result.testsAlreadyUpToDate).isEmpty()
         assertThat(result.testsDeleted).isEmpty()
         assertThat(result.testsSyncFailed).isEmpty()
+        assertThat(result.testsWithNonExistingId).hasSize(1)
     }
 
 }
