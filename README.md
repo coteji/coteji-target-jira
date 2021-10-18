@@ -10,7 +10,7 @@ This package allows Coteji to push tests to JIRA.
 Import the package in your configuration file like this:
 
 ```kotlin
-@file:DependsOn("io.github.coteji:coteji-target-jira:0.1.0")
+@file:DependsOn("io.github.coteji:coteji-target-jira:0.2.0")
 
 import io.github.coteji.targets.*
 ```
